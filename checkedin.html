@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CheckedIn - Daily Accountability</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase v9 -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        window.firebaseModules = {
+            initializeApp,
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged,
+            signOut,
+            getFirestore,
+            collection,
+            addDoc,
+            query,
+            where,
+            getDocs,
+            orderBy,
+            Timestamp,
+            doc,
+            updateDoc,
+            getDoc
+        };
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #00ff88;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .auth-container {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        
+        .input-group textarea {
+            width: 100%;
+            padding: 14px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #00ff88;
+            color: #0a0a0a;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #00dd77;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid #333;
+            color: #fff;
+            margin-top: 12px;
+        }
+        
+        .btn-secondary:hover {
+            background: #1a1a1a;
+            border-color: #555;
+        }
+        
+        .toggle-auth {
+            text-align: center;
+            margin-top: 20px;
+            color: #888;
+        }
+        
+        .toggle-auth button {
+            background: none;
+            border: none;
+            color: #00ff88;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #ff3333;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .success {
+            background: #00ff88;
+            color: #0a0a0a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .nav button {
+            flex: 1;
+            padding: 14px;
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .nav button.active {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+        }
+        
+        .card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #333;
+        }
+        
+        .card h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #00ff88;
+        }
+        
+        .card p {
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .streak {
+            display: inline-block;
+            background: #00ff88;
+            color: #0a0a0a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        .checkin-image {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 14px;
+            background: #0a0a0a;
+            border: 1px dashed #333;
+            border-radius: 8px;
+            color: #888;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .file-input-label:hover {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        .image-preview {
+            margin-top: 12px;
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        
+        .group-list {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .group-card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #333;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .group-card:hover {
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+        
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+        
+        .group-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+        
+        .group-stakes {
+            background: #00ff88;
+            color: #0a0a0a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .group-info {
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .members-count {
+            margin-top: 8px;
+            color: #aaa;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .user-info {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-email {
+            color: #aaa;
+        }
+        
+        .btn-logout {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #ff3333;
+            color: #ff3333;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-logout:hover {
+            background: #ff3333;
+            color: white;
+        }
+        
+        .feed-item {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #333;
+        }
+        
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .feed-user {
+            font-weight: 600;
+            color: #00ff88;
+        }
+        
+        .feed-date {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .feed-text {
+            color: #ddd;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAytHPkVa5iH9pCrttvnXFxxeFsOgvQxw8",
+            authDomain: "checkedin-10a69.firebaseapp.com",
+            projectId: "checkedin-10a69",
+            storageBucket: "checkedin-10a69.firebasestorage.app",
+            messagingSenderId: "268177567",
+            appId: "1:268177567:web:d8ae113a5843971dd21a97",
+            measurementId: "G-FFMFNEHB9T"
+        };
+        
+        // Initialize Firebase when modules are loaded
+        let app, auth, db;
+        
+        function initFirebase() {
+            const {
+                initializeApp,
+                getAuth,
+                getFirestore
+            } = window.firebaseModules;
+            
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        }
+        
+        // Auth Component
+        function AuthScreen({ onAuthSuccess }) {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+                
+                try {
+                    const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = window.firebaseModules;
+                    
+                    if (isLogin) {
+                        await signInWithEmailAndPassword(auth, email, password);
+                    } else {
+                        await createUserWithEmailAndPassword(auth, email, password);
+                    }
+                    onAuthSuccess();
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h1>CheckedIn</h1>
+                        <p>Daily accountability with your crew</p>
+                    </div>
+                    
+                    <div className="auth-container">
+                        <h2 style={{marginBottom: '20px', fontSize: '24px'}}>
+                            {isLogin ? 'Welcome Back' : 'Create Account'}
+                        </h2>
+                        
+                        {error && <div className="error">{error}</div>}
+                        
+                        <form onSubmit={handleSubmit}>
+                            <div className="input-group">
+                                <label>Email</label>
+                                <input 
+                                    type="email" 
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            
+                            <div className="input-group">
+                                <label>Password</label>
+                                <input 
+                                    type="password" 
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            
+                            <button type="submit" className="btn" disabled={loading}>
+                                {loading ? 'Loading...' : (isLogin ? 'Log In' : 'Sign Up')}
+                            </button>
+                        </form>
+                        
+                        <div className="toggle-auth">
+                            {isLogin ? "Don't have an account? " : "Already have an account? "}
+                            <button onClick={() => setIsLogin(!isLogin)}>
+                                {isLogin ? 'Sign Up' : 'Log In'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // Main App Component
+        function App() {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [currentView, setCurrentView] = useState('checkin'); // checkin, groups, feed
+            
+            useEffect(() => {
+                initFirebase();
+                
+                const { onAuthStateChanged } = window.firebaseModules;
+                const unsubscribe = onAuthStateChanged(auth, (user) => {
+                    setUser(user);
+                    setLoading(false);
+                });
+                
+                return unsubscribe;
+            }, []);
+            
+            if (loading) {
+                return (
+                    <div className="app-container">
+                        <div className="loading">Loading CheckedIn...</div>
+                    </div>
+                );
+            }
+            
+            if (!user) {
+                return <AuthScreen onAuthSuccess={() => setUser(auth.currentUser)} />;
+            }
+            
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h1>CheckedIn</h1>
+                        <p>Stay accountable. Build streaks.</p>
+                    </div>
+                    
+                    <div className="user-info">
+                        <span className="user-email">{user.email}</span>
+                        <button 
+                            className="btn-logout"
+                            onClick={() => {
+                                const { signOut } = window.firebaseModules;
+                                signOut(auth);
+                            }}
+                        >
+                            Logout
+                        </button>
+                    </div>
+                    
+                    <div className="nav">
+                        <button 
+                            className={currentView === 'checkin' ? 'active' : ''}
+                            onClick={() => setCurrentView('checkin')}
+                        >
+                            Check In
+                        </button>
+                        <button 
+                            className={currentView === 'groups' ? 'active' : ''}
+                            onClick={() => setCurrentView('groups')}
+                        >
+                            Groups
+                        </button>
+                        <button 
+                            className={currentView === 'feed' ? 'active' : ''}
+                            onClick={() => setCurrentView('feed')}
+                        >
+                            Feed
+                        </button>
+                    </div>
+                    
+                    {currentView === 'checkin' && <CheckInView user={user} />}
+                    {currentView === 'groups' && <GroupsView user={user} />}
+                    {currentView === 'feed' && <FeedView user={user} />}
+                </div>
+            );
+        }
+        
+        // Check In View
+        function CheckInView({ user }) {
+            const [text, setText] = useState('');
+            const [success, setSuccess] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [todayCheckin, setTodayCheckin] = useState(null);
+            
+            useEffect(() => {
+                checkTodayCheckin();
+            }, []);
+            
+            const checkTodayCheckin = async () => {
+                const { collection, query, where, getDocs, Timestamp } = window.firebaseModules;
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const q = query(
+                    collection(db, 'checkins'),
+                    where('userId', '==', user.uid),
+                    where('date', '>=', Timestamp.fromDate(today))
+                );
+                
+                const snapshot = await getDocs(q);
+                if (!snapshot.empty) {
+                    setTodayCheckin(snapshot.docs[0].data());
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setSuccess('');
+                setLoading(true);
+                
+                try {
+                    // Create checkin
+                    const { collection, addDoc, Timestamp } = window.firebaseModules;
+                    await addDoc(collection(db, 'checkins'), {
+                        userId: user.uid,
+                        userEmail: user.email,
+                        text: text,
+                        date: Timestamp.now(),
+                        createdAt: Timestamp.now()
+                    });
+                    
+                    setSuccess('✓ Checked in successfully!');
+                    setText('');
+                    checkTodayCheckin();
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            if (todayCheckin) {
+                return (
+                    <div>
+                        <div className="success">✓ You've already checked in today!</div>
+                        <div className="card">
+                            <h3>Today's Check-in</h3>
+                            <p>{todayCheckin.text}</p>
+                        </div>
+                    </div>
+                );
+            }
+            
+            return (
+                <div>
+                    <h2 style={{marginBottom: '20px', fontSize: '24px'}}>Daily Check-In</h2>
+                    
+                    {error && <div className="error">{error}</div>}
+                    {success && <div className="success">{success}</div>}
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="input-group">
+                            <label>What did you accomplish today?</label>
+                            <textarea 
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder="Share your progress, wins, or struggles..."
+                                required
+                            />
+                        </div>
+                        
+                        <button type="submit" className="btn" disabled={loading}>
+                            {loading ? 'Submitting...' : 'Submit Check-In'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+        
+        // Groups View
+        function GroupsView({ user }) {
+            const [groups, setGroups] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showCreateForm, setShowCreateForm] = useState(false);
+            
+            useEffect(() => {
+                loadGroups();
+            }, []);
+            
+            const loadGroups = async () => {
+                const { collection, getDocs } = window.firebaseModules;
+                const snapshot = await getDocs(collection(db, 'groups'));
+                const groupsData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setGroups(groupsData);
+                setLoading(false);
+            };
+            
+            if (loading) {
+                return <div className="loading">Loading groups...</div>;
+            }
+            
+            return (
+                <div>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                        <h2 style={{fontSize: '24px'}}>Groups</h2>
+                        <button 
+                            className="btn" 
+                            style={{width: 'auto', padding: '10px 20px'}}
+                            onClick={() => setShowCreateForm(!showCreateForm)}
+                        >
+                            {showCreateForm ? 'Cancel' : 'Create Group'}
+                        </button>
+                    </div>
+                    
+                    {showCreateForm && <CreateGroupForm onSuccess={() => {
+                        setShowCreateForm(false);
+                        loadGroups();
+                    }} user={user} />}
+                    
+                    {groups.length === 0 ? (
+                        <div className="empty-state">
+                            <h3>No groups yet</h3>
+                            <p>Create the first group to get started!</p>
+                        </div>
+                    ) : (
+                        <div className="group-list">
+                            {groups.map(group => (
+                                <div key={group.id} className="group-card">
+                                    <div className="group-header">
+                                        <div className="group-name">{group.name}</div>
+                                        <div className="group-stakes">${group.stakes}</div>
+                                    </div>
+                                    <div className="group-info">{group.description}</div>
+                                    <div className="members-count">
+                                        {group.members?.length || 0} members • {group.duration} days
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        // Create Group Form
+        function CreateGroupForm({ onSuccess, user }) {
+            const [name, setName] = useState('');
+            const [description, setDescription] = useState('');
+            const [stakes, setStakes] = useState('');
+            const [duration, setDuration] = useState('30');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+                
+                try {
+                    const { collection, addDoc, Timestamp } = window.firebaseModules;
+                    await addDoc(collection(db, 'groups'), {
+                        name,
+                        description,
+                        stakes: parseFloat(stakes),
+                        duration: parseInt(duration),
+                        creatorId: user.uid,
+                        creatorEmail: user.email,
+                        members: [user.uid],
+                        createdAt: Timestamp.now()
+                    });
+                    
+                    onSuccess();
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            return (
+                <div className="card" style={{marginBottom: '20px'}}>
+                    <h3>Create New Group</h3>
+                    {error && <div className="error">{error}</div>}
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="input-group">
+                            <label>Group Name</label>
+                            <input 
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Morning Gym Crew"
+                                required
+                            />
+                        </div>
+                        
+                        <div className="input-group">
+                            <label>Description</label>
+                            <textarea 
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Hit the gym every morning at 6am"
+                                required
+                            />
+                        </div>
+                        
+                        <div className="input-group">
+                            <label>Stakes Amount ($)</label>
+                            <input 
+                                type="number"
+                                value={stakes}
+                                onChange={(e) => setStakes(e.target.value)}
+                                placeholder="50"
+                                required
+                                min="0"
+                            />
+                        </div>
+                        
+                        <div className="input-group">
+                            <label>Duration (days)</label>
+                            <input 
+                                type="number"
+                                value={duration}
+                                onChange={(e) => setDuration(e.target.value)}
+                                required
+                                min="1"
+                            />
+                        </div>
+                        
+                        <button type="submit" className="btn" disabled={loading}>
+                            {loading ? 'Creating...' : 'Create Group'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+        
+        // Feed View
+        function FeedView({ user }) {
+            const [checkins, setCheckins] = useState([]);
+            const [loading, setLoading] = useState(true);
+            
+            useEffect(() => {
+                loadFeed();
+            }, []);
+            
+            const loadFeed = async () => {
+                const { collection, query, orderBy, getDocs } = window.firebaseModules;
+                const q = query(collection(db, 'checkins'), orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(q);
+                const checkinsData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setCheckins(checkinsData);
+                setLoading(false);
+            };
+            
+            if (loading) {
+                return <div className="loading">Loading feed...</div>;
+            }
+            
+            if (checkins.length === 0) {
+                return (
+                    <div className="empty-state">
+                        <h3>No check-ins yet</h3>
+                        <p>Be the first to check in!</p>
+                    </div>
+                );
+            }
+            
+            return (
+                <div>
+                    <h2 style={{marginBottom: '20px', fontSize: '24px'}}>Feed</h2>
+                    
+                    {checkins.map(checkin => (
+                        <div key={checkin.id} className="feed-item">
+                            <div className="feed-header">
+                                <div className="feed-user">{checkin.userEmail}</div>
+                                <div className="feed-date">
+                                    {checkin.date?.toDate().toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div className="feed-text">{checkin.text}</div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        
+        // Render App
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
